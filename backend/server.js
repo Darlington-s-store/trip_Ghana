@@ -50,6 +50,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// SECURITY: Apply comprehensive security middleware
+const securityMiddleware = require('./middleware/securityMiddleware');
+app.use(securityMiddleware.sanitizeInput);
+app.use(securityMiddleware.validateInputSecurity);
+app.use(securityMiddleware.phishingDetection);
+app.use(securityMiddleware.ipFilter);
+app.use(securityMiddleware.securityLogging);
+
 // SECURITY: Rate limiters with different strategies
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -159,13 +167,14 @@ app.use('/api/hotels', require('./routes/hotels'));
 app.use('/api/destinations', require('./routes/destinations'));
 app.use('/api/attractions', require('./routes/attractions'));
 app.use('/api/bookings', require('./routes/bookings'));
-app.use('/api/trips', require('./routes/trips'));
-app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/trips', require('./routes/trip'));
+app.use('/api/notifications', require('./routes/notification'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/content', require('./routes/userContent'));
 
-// Admin routes with authentication check
+// Admin routes with authentication and security checks
+app.use('/api/admin/settings', require('./routes/adminSettings'));
 const adminRouter = require('./routes/admin');
 app.use('/api/admin', (req, res, next) => {
   const authHeader = req.headers.authorization;

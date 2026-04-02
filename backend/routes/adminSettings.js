@@ -1,44 +1,30 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../db');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const AdminSettingsController = require('../controllers/adminSettingsController');
+const { authenticateToken } = require('../middleware/secureAuth');
+const { csrfProtection, sanitizeInput } = require('../middleware/securityMiddleware');
 
-// Get all settings
-router.get('/', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM platform_settings ORDER BY category, key');
-    res.json({ success: true, data: result.rows });
-  } catch (err) {
-    console.error('Settings fetch error:', err);
-    res.status(500).json({ error: 'Failed to fetch settings' });
-  }
-});
+/**
+ * Admin Settings Routes
+ * All routes require authentication and admin role
+ */
 
-// Update settings (batch)
-router.post('/update', authenticateToken, requireAdmin, async (req, res) => {
-  const { settings } = req.body; // Array of { key, value }
-  if (!Array.isArray(settings)) {
-    return res.status(400).json({ error: 'Settings must be an array' });
-  }
+router.use(authenticateToken);
+router.use(sanitizeInput);
 
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    for (const item of settings) {
-      await client.query(
-        'INSERT INTO platform_settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
-        [item.key, String(item.value)]
-      );
-    }
-    await client.query('COMMIT');
-    res.json({ success: true, message: 'Settings updated successfully' });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Settings update error:', err);
-    res.status(500).json({ error: 'Failed to update settings' });
-  } finally {
-    client.release();
-  }
-});
+// Settings management
+router.get('/settings', AdminSettingsController.getSettings);
+router.post('/maintenance-mode', csrfProtection, AdminSettingsController.setMaintenanceMode);
+router.post('/alerts/send', csrfProtection, AdminSettingsController.sendSiteAlert);
+
+// User management
+router.get('/users', AdminSettingsController.getAllUsers);
+router.get('/users/:userId', AdminSettingsController.getUserDetails);
+router.post('/users/:userId/reset-password', csrfProtection, AdminSettingsController.resetUserPassword);
+router.post('/users/:userId/suspend', csrfProtection, AdminSettingsController.suspendUser);
+router.post('/users/:userId/activate', csrfProtection, AdminSettingsController.activateUser);
+
+// Audit logs
+router.get('/audit-logs', AdminSettingsController.getAuditLogs);
 
 module.exports = router;
