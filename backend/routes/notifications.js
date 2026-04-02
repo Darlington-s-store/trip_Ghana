@@ -1,27 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const notificationsController = require('../controllers/notificationsController');
 
-router.get('/', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC', [req.user.userId]);
-    res.json({ success: true, data: result.rows });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+/**
+ * All routes require authentication
+ */
+router.use(authenticateToken);
 
-router.put('/:id/read', authenticateToken, async (req, res) => {
-  try {
-    await pool.query('UPDATE notifications SET read = true WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
-    res.json({ success: true, message: 'Marked as read' });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+// Get all notifications with pagination
+router.get('/', notificationsController.getNotifications);
 
-router.put('/read-all', authenticateToken, async (req, res) => {
-  try {
-    await pool.query('UPDATE notifications SET read = true WHERE user_id = $1', [req.user.userId]);
-    res.json({ success: true, message: 'All marked as read' });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+// Get notification stats
+router.get('/stats', notificationsController.getStats);
+
+// Get unread count
+router.get('/unread-count', notificationsController.getUnreadCount);
+
+// Get single notification and mark as read
+router.get('/:notificationId', notificationsController.getNotification);
+
+// Mark notification as read
+router.put('/:notificationId/read', notificationsController.markAsRead);
+
+// Mark all as read
+router.put('/read-all', notificationsController.markAllAsRead);
+
+// Delete notification
+router.delete('/:notificationId', notificationsController.deleteNotification);
+
+// Notification preferences
+router.get('/preferences/get', notificationsController.getPreferences);
+router.put('/preferences/update', notificationsController.updatePreferences);
 
 module.exports = router;

@@ -93,6 +93,9 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/chat', require('./routes/chat'));
 
+// User content routes (destinations, hotels, attractions, etc.)
+app.use('/api/content', require('./routes/userContent'));
+
 // Consolidated admin routes
 app.use('/api/admin', require('./routes/admin'));
 
